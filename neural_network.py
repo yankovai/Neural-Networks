@@ -1,6 +1,7 @@
 import numpy as np
+from scipy.optimize import minimize
 
-class Neural_Network(object):
+class NeuralNetwork(object):
     
     def __init__(self, nfeatures, noutputs, nhidden_layers):
         """
@@ -30,6 +31,7 @@ class Neural_Network(object):
     
     def _sigmoid(self, z):
         """
+        Evaluates the sigmoid function at z.
         """
         
         return np.power(1. + np.exp(-z), -1)      
@@ -122,37 +124,23 @@ class Neural_Network(object):
         
         return Deltas
     
-    def gradient_check(self, X, Y, eps = 1e-4):
+    def learn_thetas(self, X, Y):
         """
-        Compares the derivatives of the cost function with respect to each 
-        regression parameter, as determined using back propagation and central
-        differencing.
+        Use scipy's conjugate gradient optimizer to find the thetas that
+        minimize the cost function.
         """
         
-        back_prop_grads = self.get_gradients(X, Y)
+        minimize(fun, x0, args=(), method='CG', jac=None)
         
-        eps_normalization = 0.5/eps        
-        for theta, grad in zip(self.thetas, back_prop_grads):
-            m, n = theta.shape
-            for mi in range(m):
-                for ni in range(n):
-                    theta_original_value = theta[mi, ni]
-                    theta[mi, ni] += eps
-                    J_p_eps = self.total_cost(X, Y, self.thetas)
-                    theta[mi, ni] -= 2.*eps
-                    J_m_eps = self.total_cost(X, Y, self.thetas)
-                    theta[mi, ni] = theta_original_value
-                    print (J_p_eps - J_m_eps)*eps_normalization, grad[mi, ni]
-                    
-                    
-# Use iris data set
-from sklearn import datasets
-iris = datasets.load_iris()
-X = iris.data
-Y = iris.target
         
     
-nn = Neural_Network(4, 3, 2)
+
+                    
+                    
+
+        
+    
+
 
 
 
