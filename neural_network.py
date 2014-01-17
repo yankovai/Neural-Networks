@@ -20,15 +20,8 @@ class NeuralNetwork(object):
         thetas.append(np.random.rand(noutputs, units_per_layer + 1))
         self.thetas = thetas
         self.nthetas = len(thetas)
-        
-#       Initialize Deltas
-        Deltas = []
-        for theta in thetas:
-            Deltas.append(np.zeros_like(theta))
-            
-        self.Deltas = Deltas
-          
-    
+        self.thetas_shapes = map(np.shape, thetas)
+                
     def _sigmoid(self, z):
         """
         Evaluates the sigmoid function at z.
@@ -70,14 +63,17 @@ class NeuralNetwork(object):
         
         return deltas
     
-    def _update_Deltas(self, a, deltas):
+    def _update_Deltas(self, a, deltas, Deltas):
         """
         Add the derivative contribution of each training example. 
         """
         
-        a = a[-2::-1]        
-        for Delta, delta, ai in zip(reversed(self.Deltas), deltas, a):
-            Delta += np.outer(delta, ai)
+        updated_Deltas = []
+        a = a[-2::-1]    
+        for Delta, delta, ai in zip(reversed(Deltas), deltas, a):
+            updated_Deltas.insert(0, Delta + np.outer(delta, ai))
+        
+        return updated_Deltas
         
     def cost(self, h_theta, y):
         """
@@ -111,29 +107,95 @@ class NeuralNetwork(object):
         parameter using back propagation.
         """
         
-        Deltas = self.Deltas
-        m_inv = 1./X.shape[0]    
+        # Initialize Deltas
+        Deltas = []
+        for theta in self.thetas:
+            Deltas.append(np.zeros_like(theta))        
+        
+        m_inv = 1./X.shape[0]
         for x, true_indx in zip(X, Y):
             y = np.zeros(self.noutputs)
             y[true_indx] = 1.
             a = self._forward_prop(x)
             deltas = self._back_prop(a, y)
-            self._update_Deltas(a, deltas)
+            Deltas = self._update_Deltas(a, deltas, Deltas)
         
         Deltas = map(lambda x: x*m_inv, Deltas)
         
         return Deltas
-    
+        
+    def _objective_function(self, thetas, X, Y):
+        """
+        Function to be minimzed, put in a form that scipy's minimization
+        function can work with.
+        """
+        
+        # Convert thetas vector to form total_cost can understand
+        thetas = self.reshape_thetas(thetas, 'list')
+        self.thetas = thetas
+        
+        # Get cost function value
+        fval = self.total_cost(X, Y, thetas)
+        
+        # Get derivatives using back propagation
+        Deltas = self.get_gradients(X, Y)
+        dfval = self.reshape_thetas(Deltas, 'vector')
+        
+        return fval, dfval
+        
     def learn_thetas(self, X, Y):
         """
         Use scipy's conjugate gradient optimizer to find the thetas that
         minimize the cost function.
         """
         
-        minimize(fun, x0, args=(), method='CG', jac=None)
+        thetas0 = self.reshape_thetas(self.thetas, 'vector')
+        res = minimize(self._objective_function, thetas0, args=(X, Y), method='Newton-CG', jac=True,
+                       options = {'disp': False, 'maxiter': 400})
         
+        self.thetas = self.reshape_thetas(res.x, 'list')
         
+    def reshape_thetas(self, thetas, transform_type):
+        """
+        If 'thetas' is a vector then set 'transform_type' to 'list' and a list
+        of appropriately shaped arrays for the neural network will be returned. 
+        Alternately, if 'thetas' is a list of such arrays then set 
+        'transform_type' to 'vector' and a vector of all the theta values will
+        be returned.
+        """
+        
+        if transform_type == 'vector':
+            thetas_unrolled = thetas[0].ravel()
+            for theta in thetas[1::]:
+                thetas_unrolled = np.append(thetas_unrolled, theta.ravel())
+                
+            return thetas_unrolled
+            
+        elif transform_type == 'list':
+            thetas_rolled = []
+            num_elements = 0
+            for theta_shape in self.thetas_shapes:
+                elements = thetas[num_elements: num_elements + np.prod(theta_shape)]
+                num_elements += np.prod(theta_shape)
+                thetas_rolled.append(np.reshape(elements, theta_shape)) 
+            
+            return thetas_rolled
     
+    def predict(self, X):
+        """
+        Uses the current theta parameters to predict the classification for
+        input data X.
+        """
+        
+        npredictions = X.shape[0]
+        predictions = np.zeros(npredictions)
+        for x, i in zip(X, xrange(npredictions)):
+            predictions[i] = np.argmax(self._forward_prop(x)[-1])
+        
+        return predictions
+        
+
+ 
 
                     
                     
