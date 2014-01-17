@@ -1,4 +1,6 @@
 from neural_network import *
+from sklearn import cross_validation
+from sklearn import datasets
 import unittest
 
 class TestNeuralNetwork(unittest.TestCase):
@@ -11,8 +13,6 @@ class TestNeuralNetwork(unittest.TestCase):
         """
         
         # Use iris data set
-        from sklearn import datasets
-        
         iris = datasets.load_iris()
         self.X = iris.data
         self.Y = iris.target
@@ -47,8 +47,31 @@ class TestNeuralNetwork(unittest.TestCase):
                     # Assert that the difference between back prop. gradient and
                     # central difference gradient is within 10E-6 of each other
                     self.assertGreater(1e-6, central_difference - grad[mi, ni])
-          
+    
+    def test_neural_network(self):
+        """
+        Cross validate the results of the neural network with data from the
+        Iris set. The network should predict at least 34 out of 38 test cases.
+        """
+        
+        nn = NeuralNetwork(4, 3, 2)
+        X = self.X
+        Y = self.Y   
+        X_train, X_test, Y_train, Y_test = cross_validation.train_test_split(X, Y, test_size = 0.25)
+        
+        nn = NeuralNetwork(4, 3, 2) 
+        nn.learn_thetas(X_train, Y_train)
+        predictions = nn.predict(X_test)
+        self.assertGreater(np.sum(predictions == Y_test), 34)
 
 if __name__ == '__main__':
     unittest.main()
+
+
+
+
+
+
+
+
 
